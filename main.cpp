@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
+#include <climits>
 using namespace std;
 
 void printMainMenu();
@@ -333,41 +334,6 @@ void viewCustomer(sqlite3 *db)
 		const char *lastName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
 		const char *firstName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
 		cout << id << " - " << lastName << ", " << firstName << endl;
-	}
-
-	sqlite3_finalize(stmt);
-
-	int customerId;
-	cout << "Enter customer ID to view details (0 to cancel): ";
-	cin >> customerId;
-
-	if (customerId == 0)
-		return;
-
-	// Query customer details
-	sql = "SELECT first_name, last_name, phone, address, city, email, is_active, last_update FROM customer WHERE id = ?";
-	rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
-	if (rc != SQLITE_OK)
-	{
-		cerr << "Error preparing statement: " << sqlite3_errmsg(db) << endl;
-		return;
-	}
-
-	sqlite3_bind_int(stmt, 1, customerId);
-
-	if (sqlite3_step(stmt) == SQLITE_ROW)
-	{
-		cout << "Customer Details:" << endl;
-		cout << "Name: " << sqlite3_column_text(stmt, 0) << " " << sqlite3_column_text(stmt, 1) << endl;
-		cout << "Phone: " << sqlite3_column_text(stmt, 2) << endl;
-		cout << "Address: " << sqlite3_column_text(stmt, 3) << ", " << sqlite3_column_text(stmt, 4) << endl;
-		cout << "Email: " << sqlite3_column_text(stmt, 5) << endl;
-		cout << "Active: " << (sqlite3_column_int(stmt, 6) ? "Yes" : "No") << endl;
-		cout << "Last Update: " << sqlite3_column_text(stmt, 7) << endl;
-	}
-	else
-	{
-		cout << "Customer not found." << endl;
 	}
 
 	sqlite3_finalize(stmt);
