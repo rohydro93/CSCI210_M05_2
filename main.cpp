@@ -5,6 +5,12 @@
 #include <climits>
 using namespace std;
 
+/* Program name: Customer Rental Viewer
+*  Author: Carr O'Connor
+*  Date last updated: 7/12/2025
+* Purpose: View customer rental information
+*/
+
 void printMainMenu();
 void viewRental(sqlite3 *);
 void viewCustomer(sqlite3 *);
