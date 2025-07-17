@@ -324,23 +324,134 @@ void printRentalPage(sqlite3_stmt *res, int rowsPerPage, int startNum)
 
 void viewCustomer(sqlite3 *db)
 {
-	sqlite3_stmt *stmt;
-	const char *sql = "SELECT id, last_name, first_name FROM customer";
-	int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
-	if (rc != SQLITE_OK)
+	string query = "SELECT customer_id, last_name, first_name FROM customer ";
+	sqlite3_stmt *pRes;
+	string m_strLastError;
+	string cusID;
+	string cus_fname, cus_lname;
+	string query2;
+
+	if(sqlite3_prepare_v2(db, query.c_str(), -1, &pRes, NULL) != SQLITE_OK)
 	{
-		cerr << "Error preparing statement: " << sqlite3_errmsg(db) << endl;
+        m_strLastError = sqlite3_errmsg(db);
+		sqlite3_finalize(pRes);
+		cout << "There was an error: " << m_strLastError << endl;
 		return;
 	}
-
-	cout << "Customer List:" << endl;
-	while (sqlite3_step(stmt) == SQLITE_ROW)
+	else
 	{
-		int id = sqlite3_column_int(stmt, 0);
-		const char *lastName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1));
-		const char *firstName = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
-		cout << id << " - " << lastName << ", " << firstName << endl;
-	}
+		int i = 0, choice = 0, rowsPerPage, totalRows;
+		sqlite3_stmt *pRes2;
+		cout << left;
+		int res;
+		do
+		{
+			res = sqlite3_step(pRes);
+			i++;
+		} while (res == SQLITE_ROW);
+		totalRows = i - 1;
+		sqlite3_reset(pRes);
+		cout << "There are " << totalRows << " rows in the result.  How many do you want to see per page?" << endl;
+		cin >> rowsPerPage;
+		while (!cin || rowsPerPage < 0)
+		{
+			if (!cin)
+			{
+				cin.clear();
+				cin.ignore(INT_MAX, '\n');
+			}
+			cout << "That is not a valid choice! Try again!" << endl;
+			cout << "There are " << i << " rows in the result.  How many do you want to see per page?" << endl;
+		}
+		if (rowsPerPage > i)
+			rowsPerPage = i;
+		i = 0;
 
-	sqlite3_finalize(stmt);
+		while(choice == 0 || choice == -1)
+		{
+			if(i == 0)
+				cout << "Please choose the customer you want to see rentals for (enter 0 to go to the next page):" << endl;
+			else if (i + rowsPerPage < totalRows)
+		        cout << "Please choose the customer you want to see rentals for (enter 0 to go to the next page or -1 to go to the previous page):" << endl;
+			else
+				cout << "Please choose the customer you want to see rentals for (enter -1 to go to the previous page):" << endl;
+			printCustomerPage(pRes, rowsPerPage, i);
+			cin >> choice;
+			
+			while (!(cin) || choice < -1 || choice > totalRows)
+			{
+				if (!cin)
+				{
+					cin.clear();
+					cin.ignore(INT_MAX, '\n');
+				}
+				cout << "That is not a valid choice! Try again!" << endl;
+				cin >> choice;
+			}
+			if (choice == 0)
+			{
+				i = i + rowsPerPage;
+
+				if (i >= totalRows)
+				{
+					i = totalRows - rowsPerPage;
+
+					if(i >= totalRows)
+					{
+						i = totalRows - rowsPerPage;
+						sqlite3_reset(pRes);
+						for (int j = 0; j < i; j++)
+						{
+							sqlite3_step(pRes);
+						}
+					}
+				}
+			}
+			else if (choice == -1)
+			{
+				i = i - rowsPerPage;
+				if (i < 0)
+					i = 0;
+				sqlite3_reset(pRes);
+				for (int j = 0; j < i; j++)
+					sqlite3_step(pRes);
+			}
+		}
+		sqlite3_reset(pRes);
+		for (int i = 0; i < choice; i++)
+			sqlite3_step(pRes);
+		cusID = reinterpret_cast<const char *>(sqlite3_column_text(pRes, 0));
+		cus_fname = reinterpret_cast<const char *>(sqlite3_column_text(pRes, 1));
+		cus_lname = reinterpret_cast<const char *>(sqlite3_column_text(pRes, 2));
+		sqlite3_finalize(pRes);
+		query2 = "SELECT a.address, a.district, a.postal_code, a.phone, c.email, c.last_update FROM customer c";
+		query2 += " JOIN address a ON c.address_id = a.address_id WHERE c.customer_id = " + cusID;
+
+		if(sqlite3_prepare_v2(db, query2.c_str(), -1, &pRes2, NULL) != SQLITE_OK)
+		{
+			m_strLastError = sqlite3_errmsg(db);
+			sqlite3_finalize(pRes2);
+			cout << "There was an error: " << m_strLastError << endl;
+			return;
+		}
+
+		if (sqlite3_step(pRes2) == SQLITE_ROW)
+		{
+			const char *address = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 0));
+			const char *district = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 1));
+			const char *postalCode = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 2));
+			const char *phoneNumber = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 3));
+			const char *email = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 4));
+			const char *lastUpdate = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 5));
+			cout << "----Customer Information----" << endl;
+			cout << "Name: " << cus_fname << " " << cus_lname << endl;
+			cout << "Address: " << address << endl;
+			cout << district << " " << postalCode << endl;
+			cout << "Phone Number: " << phoneNumber << endl;
+			cout << "Email: " << email << endl;
+			cout << "Last Update: " << lastUpdate << endl;				
+		}
+		
+		sqlite3_finalize(pRes2);
+	}
 }
