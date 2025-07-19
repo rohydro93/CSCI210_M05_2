@@ -7,7 +7,7 @@ using namespace std;
 
 /* Program name: Customer Rental Viewer
 *  Author: Carr O'Connor
-*  Date last updated: 7/12/2025
+*  Date last updated: 7/18/2025
 * Purpose: View customer rental information
 */
 
@@ -329,6 +329,7 @@ void printRentalPage(sqlite3_stmt *res, int rowsPerPage, int startNum)
 
 void viewCustomer(sqlite3 *db)
 {
+	// Set up sql queries and variables
 	string query = "SELECT customer_id, last_name, first_name FROM customer ";
 	sqlite3_stmt *pRes;
 	string m_strLastError;
@@ -336,6 +337,7 @@ void viewCustomer(sqlite3 *db)
 	string cus_fname, cus_lname;
 	string query2;
 
+	// Prepare the query
 	if(sqlite3_prepare_v2(db, query.c_str(), -1, &pRes, NULL) != SQLITE_OK)
 	{
         m_strLastError = sqlite3_errmsg(db);
@@ -348,6 +350,7 @@ void viewCustomer(sqlite3 *db)
 		int i = 0, choice = 0, rowsPerPage, totalRows;
 		sqlite3_stmt *pRes2;
 		cout << left;
+		// Count total rows
 		int res;
 		do
 		{
@@ -358,6 +361,7 @@ void viewCustomer(sqlite3 *db)
 		sqlite3_reset(pRes);
 		cout << "There are " << totalRows << " rows in the result.  How many do you want to see per page?" << endl;
 		cin >> rowsPerPage;
+		// Validate input for rows per page
 		while (!cin || rowsPerPage < 0)
 		{
 			if (!cin)
@@ -372,6 +376,7 @@ void viewCustomer(sqlite3 *db)
 			rowsPerPage = i;
 		i = 0;
 
+		// Pagination and selection loop
 		while(choice == 0 || choice == -1)
 		{
 			if(i == 0)
@@ -422,16 +427,20 @@ void viewCustomer(sqlite3 *db)
 					sqlite3_step(pRes);
 			}
 		}
+		// Finalize the selection
 		sqlite3_reset(pRes);
 		for (int i = 0; i < choice; i++)
 			sqlite3_step(pRes);
+		// Retrieve customer information
 		cusID = reinterpret_cast<const char *>(sqlite3_column_text(pRes, 0));
 		cus_fname = reinterpret_cast<const char *>(sqlite3_column_text(pRes, 1));
 		cus_lname = reinterpret_cast<const char *>(sqlite3_column_text(pRes, 2));
 		sqlite3_finalize(pRes);
+		// Build the second query to get customer details joined with address
 		query2 = "SELECT a.address, a.district, a.postal_code, a.phone, c.email, c.last_update FROM customer c";
 		query2 += " JOIN address a ON c.address_id = a.address_id WHERE c.customer_id = " + cusID;
 
+		// Prepare the second query
 		if(sqlite3_prepare_v2(db, query2.c_str(), -1, &pRes2, NULL) != SQLITE_OK)
 		{
 			m_strLastError = sqlite3_errmsg(db);
@@ -440,6 +449,7 @@ void viewCustomer(sqlite3 *db)
 			return;
 		}
 
+		// Execute the second query and display customer information
 		if (sqlite3_step(pRes2) == SQLITE_ROW)
 		{
 			const char *address = reinterpret_cast<const char *>(sqlite3_column_text(pRes2, 0));
@@ -461,6 +471,7 @@ void viewCustomer(sqlite3 *db)
 	}
 }
 
+// Add rental function built during class
 void addRental(sqlite3 *db)
 {
 	int rc = sqlite3_exec(db, "begin transaction", NULL, NULL, NULL);
@@ -745,12 +756,14 @@ void addRental(sqlite3 *db)
 		cout << "Rental and Payment entered successfully. Rental Id: " << rental_id << " Payment Id: " << sqlite3_last_insert_rowid(db);
 }
 
+//Save changes
 int commit(sqlite3 *db)
 {
 	int rc = sqlite3_exec(db, "COMMIT;", NULL, NULL, NULL);
 	return rc;
 }
 
+//Discard changes
 int rollback(sqlite3 *db)
 {
 	int rc = sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
